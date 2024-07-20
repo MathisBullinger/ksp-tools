@@ -11,7 +11,11 @@ export const Parameters = () => {
         e.preventDefault();
       }}
     >
+      <S.SectionTitle>Celestial Body</S.SectionTitle>
       <Item valuePath={["body", "radius"]}>radius (km)</Item>
+      <S.SectionTitle>Satellites</S.SectionTitle>
+      <Item valuePath={["satellites", "count"]}>count</Item>
+      <Item valuePath={["satellites", "altitude"]}>altitude (km)</Item>
     </S.Container>
   );
 };
@@ -25,7 +29,7 @@ const Item = ({
 }) => {
   return (
     <>
-      <label for={getId(valuePath)}>{label}</label>
+      <S.Label for={getId(valuePath)}>{label}</S.Label>
       <NumericController valuePath={valuePath} />
     </>
   );
@@ -44,8 +48,6 @@ const inputController =
   ({ valuePath }) => {
     const scene = useScene();
     const storedValue = select(scene, ...valuePath);
-    // const storedValueRef = useRef(storedValue)
-    // storeV
 
     const [inputValue, setInputValue] = useState<T>(storedValue as any);
 
@@ -110,9 +112,18 @@ const S = {
     display: grid;
     grid-template-columns: auto auto;
     gap: 0.5em;
+    grid-auto-rows: min-content;
+  `,
 
-    > * {
-      height: fit-content;
-    }
+  SectionTitle: styled.span`
+    grid-column: 1 / -1;
+    text-align: center;
+    font-weight: 500;
+    font-variant: small-caps;
+    align-items: center;
+  `,
+
+  Label: styled.label`
+    text-align: right;
   `,
 };

@@ -14,12 +14,18 @@ export type Scene = {
 export type Body = {
   name?: string;
   radius: number;
+  atmosphere?: {
+    height: number;
+  };
 };
 
 export const makeDefaultScene = (): Scene => ({
   body: {
     name: "Kerbin",
     radius: 600,
+    atmosphere: {
+      height: 70,
+    },
   },
   satellites: {
     count: 4,

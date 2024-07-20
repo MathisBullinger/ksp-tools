@@ -1,11 +1,11 @@
 import styled from "styled-components";
-import { useState } from "preact/hooks";
-import { Body, Scene, useScene } from "./state";
+import { useScene } from "./state";
+import type * as T from "./state";
 
 export const Plot = () => {
   const scene = useScene();
 
-  const getDefaultVMin = (scene: Scene): number =>
+  const getDefaultVMin = (scene: T.Scene): number =>
     Math.max(
       scene.body.radius * 2,
       (scene.body.radius +
@@ -14,17 +14,28 @@ export const Plot = () => {
         2
     ) * 1.2;
 
-  const [vMin, setVmin] = useState(() => getDefaultVMin(scene));
-
-  console.log("render plot");
+  const vMin = getDefaultVMin(scene);
 
   return (
     <S.Container viewBox={[-vMin / 2, -vMin / 2, vMin, vMin].join(" ")}>
-      {[...Array(scene.satellites.count)].map((_, i) => (
-        <Satellite key={i} index={i} vMin={vMin} />
-      ))}
-      <S.Body body={scene.body} />
+      <g>
+        {[...Array(scene.satellites.count)].map((_, i) => (
+          <Satellite key={i} index={i} vMin={vMin} />
+        ))}
+        <Body {...scene.body} />
+      </g>
     </S.Container>
+  );
+};
+
+const Body = ({ radius, atmosphere }: T.Body) => {
+  return (
+    <>
+      {atmosphere && (
+        <S.Atmosphere height={atmosphere.height} parentRadius={radius} />
+      )}
+      <S.Body radius={radius} />
+    </>
   );
 };
 
@@ -34,8 +45,10 @@ const Satellite = ({ index, vMin }: { index: number; vMin: number }) => {
 
   const offset = body.radius + satellites.altitude;
 
-  const x = offset * Math.sin(2 * Math.PI * (index / satellites.count));
-  const y = offset * Math.cos(2 * Math.PI * (index / satellites.count));
+  const x =
+    offset * Math.sin(Math.PI + 2 * Math.PI * (index / satellites.count));
+  const y =
+    offset * Math.cos(Math.PI + 2 * Math.PI * (index / satellites.count));
 
   return (
     <g transform={`translate(${x}, ${y})`}>
@@ -53,12 +66,23 @@ const S = {
     display: block;
   `,
 
-  Body: styled.circle.attrs<{ body: Body }>((props) => ({
+  Body: styled.circle.attrs<{ radius: number }>(({ radius }) => ({
     cx: 0,
     cy: 0,
-    r: props.body.radius,
-    fill: "#000",
-  }))``,
+    r: radius,
+  }))`
+    fill: #000;
+  `,
+
+  Atmosphere: styled.circle.attrs<{ height: number; parentRadius: number }>(
+    ({ parentRadius, height }) => ({
+      cx: 0,
+      cy: 0,
+      r: parentRadius + height,
+    })
+  )`
+    fill: #0002;
+  `,
 
   Satellite: styled.circle`
     fill: #000;

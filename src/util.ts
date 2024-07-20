@@ -8,9 +8,14 @@ export const setPath =
       throw new Error(`[setPath] cannot set ${path[0]} key in non-object`);
     }
 
+    const updated = setPath((object as any)[path[0]])(...path.slice(1))(
+      value as any
+    );
+    if (updated === object[path[0]]) return object;
+
     return {
       ...object,
-      [path[0]]: setPath(object)(...path.slice(1))(value as any),
+      [path[0]]: updated,
     };
   };
 
