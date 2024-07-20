@@ -8,7 +8,6 @@ import {
 
 import PageRelayNet from "./pages/relaynet";
 import { NotFound } from "./pages/_404.jsx";
-import "./style.css";
 
 export function App() {
   return (
