@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { useScene } from "./state";
 import type * as T from "./state";
+import { FC } from "preact/compat";
 
 export const Plot = () => {
   const scene = useScene();
@@ -39,9 +40,9 @@ const Body = ({ radius, atmosphere }: T.Body) => {
   );
 };
 
-const Satellite = ({ index, vMin }: { index: number; vMin: number }) => {
+const Satellite: FC<{ index: number; vMin: number }> = ({ index, vMin }) => {
   const { satellites, body } = useScene();
-  if (index >= satellites.count) return;
+  if (index >= satellites.count) return null;
 
   const offset = body.radius + satellites.altitude;
 
