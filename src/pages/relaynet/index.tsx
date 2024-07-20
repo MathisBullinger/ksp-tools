@@ -39,5 +39,6 @@ const S = {
     display: flex;
     gap: 1rem;
     justify-content: center;
+    padding: 1rem 0;
   `,
 };

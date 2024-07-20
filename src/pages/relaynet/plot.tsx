@@ -16,6 +16,8 @@ export const Plot = () => {
 
   const [vMin, setVmin] = useState(() => getDefaultVMin(scene));
 
+  console.log("render plot");
+
   return (
     <S.Container viewBox={[-vMin / 2, -vMin / 2, vMin, vMin].join(" ")}>
       {[...Array(scene.satellites.count)].map((_, i) => (
@@ -38,7 +40,7 @@ const Satellite = ({ index, vMin }: { index: number; vMin: number }) => {
   return (
     <g transform={`translate(${x}, ${y})`}>
       <S.OmniRange r={satellites.omniRange} />
-      <S.Satellite r={0.005 * vMin} />
+      <S.Satellite r={0.003 * vMin} />
     </g>
   );
 };
