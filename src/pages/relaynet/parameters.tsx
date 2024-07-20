@@ -33,10 +33,12 @@ export const Parameters = () => {
       <S.SectionTitle>Satellites</S.SectionTitle>
       <Item valuePath={["satellites", "count"]}>count</Item>
       <Item valuePath={["satellites", "altitude"]}>altitude (km)</Item>
-      <S.SectionTitle>UI</S.SectionTitle>
+      <Item valuePath={["satellites", "omniRange"]}>omni range (km)</Item>
+      <S.SectionTitle>UI toggles</S.SectionTitle>
       <Item valuePath={["ui", "toggles", "atmosphere"]}>atmosphere</Item>
       <Item valuePath={["ui", "toggles", "orbit"]}>orbit</Item>
       <Item valuePath={["ui", "toggles", "stable"]}>stable</Item>
+      <Item valuePath={["ui", "toggles", "night"]}>night shadow</Item>
     </S.Container>
   );
 };
@@ -202,5 +204,6 @@ const S = {
   Checkbox: styled("input").attrs({ type: "checkbox" })`
     width: fit-content;
     cursor: pointer;
+    margin: 0 0.2em;
   `,
 };

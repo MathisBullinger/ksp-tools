@@ -32,7 +32,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --cl-background: #000;
+    --cl-background: #111;
     --cl-text: #fff;
   }
 }

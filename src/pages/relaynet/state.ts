@@ -14,6 +14,7 @@ export type Scene = {
       atmosphere: boolean;
       orbit: boolean;
       stable: boolean;
+      night: boolean;
     };
   };
 };
@@ -44,6 +45,7 @@ export const makeDefaultScene = (): Scene => ({
       atmosphere: true,
       orbit: true,
       stable: true,
+      night: false,
     },
   },
 });
