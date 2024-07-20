@@ -5,6 +5,8 @@ import { useCallback, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { FC } from "preact/compat";
 
 export const Parameters = () => {
+  const scene = useScene();
+
   return (
     <S.Container
       onSubmit={(e) => {
@@ -22,23 +24,35 @@ export const Parameters = () => {
       >
         atmosphere
       </Item>
-      <Item valuePath={["body", "atmosphere", "height"]}>height (km)</Item>
+      <Item
+        valuePath={["body", "atmosphere", "height"]}
+        condition={scene.body.atmosphere !== undefined}
+      >
+        height (km)
+      </Item>
       <S.SectionTitle>Satellites</S.SectionTitle>
       <Item valuePath={["satellites", "count"]}>count</Item>
       <Item valuePath={["satellites", "altitude"]}>altitude (km)</Item>
+      <S.SectionTitle>UI</S.SectionTitle>
+      <Item valuePath={["ui", "toggles", "atmosphere"]}>atmosphere</Item>
+      <Item valuePath={["ui", "toggles", "orbit"]}>orbit</Item>
+      <Item valuePath={["ui", "toggles", "stable"]}>stable</Item>
     </S.Container>
   );
 };
 
 const Item = <P extends string[], T>({
   children: label,
+  condition,
   ...props
 }: {
   children: string;
   valuePath: P;
   mapStoreValue?: (value: Select<Scene, P>) => T;
   mapInputValue?: (value: T) => Select<Scene, P>;
+  condition?: boolean;
 }) => {
+  if (condition === false) return null;
   return (
     <>
       <S.Label for={getId(props.valuePath)}>{label}</S.Label>
@@ -133,9 +147,8 @@ const NumericInput = ({
   onChange: (value: number) => void;
   onBlur?: () => void;
 }) => (
-  <input
+  <S.NumberInput
     id={id}
-    type="number"
     value={value}
     onChange={({ currentTarget }) => onChange(parseFloat(currentTarget.value))}
     onBlur={onBlur}
@@ -175,10 +188,15 @@ const S = {
     font-weight: 500;
     font-variant: small-caps;
     align-items: center;
+    background-color: #0000000b;
   `,
 
   Label: styled.label`
     text-align: right;
+  `,
+
+  NumberInput: styled("input").attrs({ type: "number" })`
+    width: 12ch;
   `,
 
   Checkbox: styled("input").attrs({ type: "checkbox" })`

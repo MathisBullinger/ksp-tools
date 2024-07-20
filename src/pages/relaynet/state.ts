@@ -9,6 +9,13 @@ export type Scene = {
     altitude: number;
     omniRange: number;
   };
+  ui: {
+    toggles: {
+      atmosphere: boolean;
+      orbit: boolean;
+      stable: boolean;
+    };
+  };
 };
 
 export type Body = {
@@ -31,6 +38,13 @@ export const makeDefaultScene = (): Scene => ({
     count: 4,
     altitude: 1000,
     omniRange: 2000,
+  },
+  ui: {
+    toggles: {
+      atmosphere: true,
+      orbit: true,
+      stable: true,
+    },
   },
 });
 

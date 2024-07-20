@@ -20,6 +20,13 @@ export const Plot = () => {
   return (
     <S.Container viewBox={[-vMin / 2, -vMin / 2, vMin, vMin].join(" ")}>
       <g>
+        {scene.satellites.count > 0 && (
+          <S.Orbit
+            r={scene.satellites.altitude + scene.body.radius}
+            stroke-width={0.0005 * vMin}
+            stroke-dasharray={0.01 * vMin}
+          />
+        )}
         {[...Array(scene.satellites.count)].map((_, i) => (
           <Satellite key={i} index={i} vMin={vMin} />
         ))}
@@ -29,13 +36,36 @@ export const Plot = () => {
   );
 };
 
-const Body = ({ radius, atmosphere }: T.Body) => {
+const Body: FC<T.Body> = ({ radius, atmosphere }) => {
   return (
     <>
       {atmosphere && (
-        <S.Atmosphere height={atmosphere.height} parentRadius={radius} />
+        <Atmosphere height={atmosphere.height} bodyRadius={radius} />
       )}
       <S.Body radius={radius} />
+    </>
+  );
+};
+
+const Atmosphere: FC<{ height: number; bodyRadius: number }> = ({
+  height,
+  bodyRadius,
+}) => {
+  const { ui } = useScene();
+
+  if (!ui.toggles.atmosphere) return null;
+  return (
+    <>
+      <defs>
+        <radialGradient id="atmosphere-gradient">
+          <stop
+            offset={`${bodyRadius / (bodyRadius + height)}`}
+            stop-color="#8e9da988"
+          />
+          <stop offset="100%" stop-color="#8e9da908" />
+        </radialGradient>
+      </defs>
+      <S.Atmosphere height={height} parentRadius={bodyRadius} />
     </>
   );
 };
@@ -82,7 +112,7 @@ const S = {
       r: parentRadius + height,
     })
   )`
-    fill: #0002;
+    fill: url(#atmosphere-gradient);
   `,
 
   Satellite: styled.circle`
@@ -92,5 +122,10 @@ const S = {
   OmniRange: styled.circle`
     fill: #fdd835;
     opacity: 0.15;
+  `,
+
+  Orbit: styled.circle`
+    fill: none;
+    stroke: #000;
   `,
 };
