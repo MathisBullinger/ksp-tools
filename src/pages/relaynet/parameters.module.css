@@ -1,0 +1,27 @@
+.container {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.5em;
+  grid-auto-rows: min-content;
+}
+
+.section {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  gap: inherit;
+  row-gap: 0.3em;
+
+  > *:first-child {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-weight: 500;
+    font-variant: small-caps;
+    align-items: center;
+    background-color: #0000000b;
+  }
+
+  label {
+    text-align: right;
+  }
+}

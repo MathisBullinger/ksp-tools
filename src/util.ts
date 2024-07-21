@@ -1,24 +1,3 @@
-export const setPath =
-  <T extends Record<string, unknown>>(object: T) =>
-  <P extends string[]>(...path: P) =>
-  (value: Select<T, P>): T => {
-    if (path.length === 0) return value as any;
-
-    if (typeof object !== "object" || object === null) {
-      throw new Error(`[setPath] cannot set ${path[0]} key in non-object`);
-    }
-
-    const updated = setPath((object as any)[path[0]])(...path.slice(1))(
-      value as any
-    );
-    if (updated === object[path[0]]) return object;
-
-    return {
-      ...object,
-      [path[0]]: updated,
-    };
-  };
-
 export const select = <T, P extends string[]>(
   object: T,
   ...path: P

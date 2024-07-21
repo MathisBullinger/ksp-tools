@@ -1,29 +1,15 @@
-import {
-  LocationProvider,
-  Router,
-  Route,
-  hydrate,
-  prerender as ssr,
-} from "preact-iso";
+/* @refresh reload */
+import { render } from "solid-js/web";
 
-import PageRelayNet from "./pages/relaynet";
-import { NotFound } from "./pages/_404.jsx";
+import "./styles/main.css";
+import App from "./pages/relaynet/page";
 
-export function App() {
-  return (
-    <LocationProvider>
-      <Router>
-        <Route path="/" component={PageRelayNet} />
-        <Route default component={NotFound} />
-      </Router>
-    </LocationProvider>
+const root = document.getElementById("root");
+
+if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
+  throw new Error(
+    "Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?"
   );
 }
 
-if (typeof window !== "undefined") {
-  hydrate(<App />, document.getElementById("app")!);
-}
-
-export async function prerender(data: any) {
-  return await ssr(<App {...data} />);
-}
+render(() => <App />, root!);

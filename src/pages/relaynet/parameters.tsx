@@ -1,209 +1,104 @@
-import styled from "styled-components";
-import { Scene, makeDefaultScene, useScene } from "./state";
-import { Select, ident, select } from "../../util";
-import { useCallback, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { FC } from "preact/compat";
+import type { Component, JSX } from "solid-js";
+import styles from "./parameters.module.css";
+import { defaultScene, useScene } from "./scene";
+import { NumericInput } from "../../components/NumericInput";
+import { ident, select } from "../../util";
+import { Toggle } from "../../components/Toggle";
+import { Dynamic, Show } from "solid-js/web";
 
-export const Parameters = () => {
-  const scene = useScene();
-
+export const Parameters: Component = () => {
   return (
-    <S.Container
-      onSubmit={(e) => {
-        e.preventDefault();
-      }}
-    >
-      <S.SectionTitle>Celestial Body</S.SectionTitle>
-      <Item valuePath={["body", "radius"]}>radius (km)</Item>
-      <Item
-        valuePath={["body", "atmosphere"] as const}
-        mapStoreValue={(atmosphere) => !!atmosphere}
-        mapInputValue={(exists) =>
-          exists ? makeDefaultScene().body.atmosphere : undefined
-        }
-      >
-        atmosphere
-      </Item>
-      <Item
-        valuePath={["body", "atmosphere", "height"]}
-        condition={scene.body.atmosphere !== undefined}
-      >
-        height (km)
-      </Item>
-      <S.SectionTitle>Satellites</S.SectionTitle>
-      <Item valuePath={["satellites", "count"]}>count</Item>
-      <Item valuePath={["satellites", "altitude"]}>altitude (km)</Item>
-      <Item valuePath={["satellites", "omniRange"]}>omni range (km)</Item>
-      <S.SectionTitle>UI toggles</S.SectionTitle>
-      <Item valuePath={["ui", "toggles", "atmosphere"]}>atmosphere</Item>
-      <Item valuePath={["ui", "toggles", "orbit"]}>orbit</Item>
-      <Item valuePath={["ui", "toggles", "stable"]}>stable</Item>
-      <Item valuePath={["ui", "toggles", "night"]}>night shadow</Item>
-    </S.Container>
+    <form class={styles.container} onSubmit={(e) => e.preventDefault()}>
+      <Section title="Celestial Body">
+        <Item scenePath={["body", "radius"]}>radius (km)</Item>
+        <Item
+          scenePath={["body", "atmosphere"]}
+          mapStoreValue={(value) => !!value}
+          mapInputValue={(enabled) =>
+            enabled ? defaultScene().body.atmosphere : undefined
+          }
+        >
+          has atmosphere
+        </Item>
+        <Item scenePath={["body", "atmosphere", "height"]}>
+          atm. height (km)
+        </Item>
+      </Section>
+      <Section title="Satellites">
+        <Item scenePath={["satellites", "count"]}>count</Item>
+        <Item scenePath={["satellites", "altitude"]}>altitude (km)</Item>
+        <Item scenePath={["satellites", "omniRange"]}>omni range (km)</Item>
+      </Section>
+      <Section title="UI toggles">
+        <Item scenePath={["ui", "toggles", "atmosphere"]}>atmosphere</Item>
+        <Item scenePath={["ui", "toggles", "orbit"]}>orbit</Item>
+        <Item scenePath={["ui", "toggles", "stable"]}>stable</Item>
+        <Item scenePath={["ui", "toggles", "night"]}>night shadow</Item>
+      </Section>
+    </form>
   );
 };
 
-const Item = <P extends string[], T>({
-  children: label,
-  condition,
-  ...props
-}: {
-  children: string;
-  valuePath: P;
-  mapStoreValue?: (value: Select<Scene, P>) => T;
-  mapInputValue?: (value: T) => Select<Scene, P>;
-  condition?: boolean;
+const Section: Component<{ title: string; children?: JSX.Element }> = ({
+  title,
+  children,
 }) => {
-  if (condition === false) return null;
   return (
-    <>
-      <S.Label for={getId(props.valuePath)}>{label}</S.Label>
-      <NumericController {...props} />
-      <BooleanController {...props} />
-    </>
+    <div class={styles.section}>
+      <span>{title}</span>
+      {children}
+    </div>
   );
 };
 
-const inputController =
-  <T,>(
-    typeCheck: (value: unknown) => value is T,
-    Component: FC<{
-      inputId: string;
-      value: T;
-      onChange: (value: T) => void;
-      commit: () => void;
-    }>
-  ): FC<{
-    valuePath: string[];
-    mapStoreValue?: (value: any) => unknown;
-    mapInputValue?: (value: any) => unknown;
-  }> =>
-  ({ valuePath, mapStoreValue, mapInputValue }) => {
-    const scene = useScene();
-    const storedValue = select(scene, ...valuePath);
+const Item = <T,>(props: {
+  scenePath: string[];
+  children: string;
+  mapStoreValue?: (value: unknown) => T;
+  mapInputValue?: (value: T) => unknown;
+}) => {
+  const scene = useScene();
+  const storeValue = () =>
+    (props.mapStoreValue ?? ident)(select(scene, ...props.scenePath) as any);
 
-    const [inputValue, setInputState] = useState<T>(storedValue as any);
-    const inputValueRef = useRef(inputValue);
-    inputValueRef.current = inputValue;
+  const getId = () =>
+    props.scenePath
+      .map((key) => key.toLowerCase().replace(/[^a-z]+/g, "-"))
+      .join("_");
 
-    const mapInputRef = useRef<(value: any) => any>(ident);
-    mapInputRef.current = mapInputValue ?? ident;
+  const inputs = {
+    number: NumericContoller,
+    boolean: BooleanController,
+  } satisfies Record<string, InputController<any>>;
 
-    const setInputValue = useCallback((value: T) => {
-      const mappedValue = mapInputRef.current(value);
-      setInputState(mappedValue);
-      inputValueRef.current = mappedValue;
-    }, []);
-
-    useLayoutEffect(() => {
-      setInputValue(storedValue as any);
-    }, [storedValue]);
-
-    const storedValueMapped = (mapStoreValue ?? ident)(storedValue);
-
-    if (!typeCheck(storedValueMapped)) return null;
-    return (
-      <Component
-        inputId={getId(valuePath)}
-        value={inputValue}
-        onChange={setInputValue}
-        commit={() => scene.update(...valuePath)(inputValueRef.current as any)}
+  return (
+    <Show when={(typeof storeValue()) in inputs}>
+      <label for={getId()}>{props.children}</label>
+      <Dynamic
+        component={inputs[typeof storeValue() as keyof typeof inputs]}
+        id={getId()}
+        value={storeValue()}
+        onChange={(value: any) =>
+          (scene.set as any)(
+            ...props.scenePath,
+            (props.mapInputValue ?? ident)(value)
+          )
+        }
       />
-    );
-  };
-
-const NumericController = inputController(
-  (value): value is number => typeof value === "number",
-  ({ inputId, value, onChange, commit }) => (
-    <NumericInput
-      id={inputId}
-      value={value}
-      onChange={onChange}
-      onBlur={commit}
-    />
-  )
-);
-
-const BooleanController = inputController(
-  (value): value is boolean => typeof value === "boolean",
-  ({ inputId, value, onChange, commit }) => (
-    <Checkbox
-      id={inputId}
-      checked={value}
-      onChange={(value) => {
-        onChange(value);
-        commit();
-      }}
-    />
-  )
-);
-
-const NumericInput = ({
-  id,
-  value,
-  onChange,
-  onBlur,
-}: {
-  id?: string;
-  value: number;
-  onChange: (value: number) => void;
-  onBlur?: () => void;
-}) => (
-  <S.NumberInput
-    id={id}
-    value={value}
-    onChange={({ currentTarget }) => onChange(parseFloat(currentTarget.value))}
-    onBlur={onBlur}
-  />
-);
-
-const Checkbox = ({
-  id,
-  checked,
-  onChange,
-}: {
-  id: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) => (
-  <S.Checkbox
-    id={id}
-    checked={checked}
-    onChange={({ currentTarget }) => onChange(currentTarget.checked)}
-  />
-);
-
-const getId = (path: string[]): string =>
-  path.map((key) => key.toLowerCase().replace(/[^a-z]+/g, "-")).join("_");
-
-const S = {
-  Container: styled("form")`
-    display: grid;
-    grid-template-columns: auto auto;
-    gap: 0.5em;
-    grid-auto-rows: min-content;
-  `,
-
-  SectionTitle: styled.span`
-    grid-column: 1 / -1;
-    text-align: center;
-    font-weight: 500;
-    font-variant: small-caps;
-    align-items: center;
-    background-color: #0000000b;
-  `,
-
-  Label: styled.label`
-    text-align: right;
-  `,
-
-  NumberInput: styled("input").attrs({ type: "number" })`
-    width: 12ch;
-  `,
-
-  Checkbox: styled("input").attrs({ type: "checkbox" })`
-    width: fit-content;
-    cursor: pointer;
-    margin: 0 0.2em;
-  `,
+    </Show>
+  );
 };
+
+type InputController<T> = Component<{
+  id: string;
+  value: T;
+  onChange: (value: T) => void;
+}>;
+
+const NumericContoller: InputController<number> = (props) => (
+  <NumericInput {...props} />
+);
+
+const BooleanController: InputController<boolean> = (props) => (
+  <Toggle id={props.id} enabled={props.value} onToggle={props.onChange} />
+);

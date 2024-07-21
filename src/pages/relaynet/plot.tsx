@@ -1,13 +1,22 @@
-import styled from "styled-components";
-import { useScene } from "./state";
-import type * as T from "./state";
-import { FC } from "preact/compat";
-import { Vec, vec } from "../../util";
+import {
+  Component,
+  For,
+  Show,
+  createContext,
+  createMemo,
+  useContext,
+} from "solid-js";
+import styles from "./plot.module.css";
+import { useScene } from "./scene";
+import { type Vec, vec } from "../../util";
 
-export const Plot = () => {
+const PlotContext = createContext({ vMin: () => 100 as number });
+const usePlot = () => useContext(PlotContext);
+
+export const Plot: Component = () => {
   const scene = useScene();
 
-  const getDefaultVMin = (scene: T.Scene): number =>
+  const getVMin = () =>
     Math.max(
       scene.body.radius * 2,
       (scene.body.radius +
@@ -16,62 +25,47 @@ export const Plot = () => {
         2
     ) * 1.2;
 
-  const vMin = getDefaultVMin(scene);
+  const viewBox = (): [x: number, y: number, width: number, height: number] => {
+    const vMin = getVMin();
+    return [-vMin / 2, -vMin / 2, vMin, vMin];
+  };
 
   return (
-    <S.Container viewBox={[-vMin / 2, -vMin / 2, vMin, vMin].join(" ")}>
-      <g>
-        <NightShadow {...scene.body} />
-        {[...Array(scene.satellites.count)].map((_, i) => (
-          <SatelliteRange key={i} index={i} vMin={vMin} />
-        ))}
-        {scene.satellites.count > 0 && (
-          <S.Orbit
-            r={scene.satellites.altitude + scene.body.radius}
-            stroke-width={0.0005 * vMin}
-            stroke-dasharray={0.01 * vMin}
-          />
-        )}
-        <StableOrbit vMin={vMin} />
-        {[...Array(scene.satellites.count)].map((_, i) => (
-          <Satellite key={i} index={i} vMin={vMin} />
-        ))}
-        <Body {...scene.body} />
-      </g>
-    </S.Container>
+    <PlotContext.Provider value={{ vMin: getVMin }}>
+      <svg class={styles.svg} viewBox={viewBox().join(" ")}>
+        <For each={Array(scene.satellites.count)}>
+          {(_, index) => <SatelliteRange index={index()} />}
+        </For>
+        <SatellitesOrbit />
+        <Body />
+        <For each={Array(scene.satellites.count)}>
+          {(_, index) => <Satellite index={index()} />}
+        </For>
+        <StableOrbit />
+      </svg>
+    </PlotContext.Provider>
   );
 };
 
-const Body: FC<T.Body> = ({ radius, atmosphere }) => {
+const Body: Component = () => {
+  const scene = useScene();
   return (
     <>
-      {atmosphere && (
-        <Atmosphere height={atmosphere.height} bodyRadius={radius} />
-      )}
-      <S.Body radius={radius} />
+      <Atmosphere />
+      <NightShadow />
+      <circle class={styles.body} cx={0} cy={0} r={scene.body.radius} />
     </>
   );
 };
 
-const NightShadow: FC<T.Body> = ({ radius }) => {
-  const { ui } = useScene();
-  if (!ui.toggles.night) return null;
-  return <S.Shadow x={0} y={-radius} width="100%" height={radius * 2} />;
-};
-
-const Atmosphere: FC<{ height: number; bodyRadius: number }> = ({
-  height,
-  bodyRadius,
-}) => {
-  const { ui } = useScene();
-
-  if (!ui.toggles.atmosphere) return null;
+const Atmosphere: Component = () => {
+  const scene = useScene();
   return (
-    <>
+    <Show when={scene.body.atmosphere && scene.ui.toggles.atmosphere}>
       <defs>
         <radialGradient id="atmosphere-gradient">
           <stop
-            offset={`${bodyRadius / (bodyRadius + height)}`}
+            offset={`${scene.body.radius / (scene.body.radius + scene.body.atmosphere!.height)}`}
             stop-color="var(--cl-atmosphere)"
             stop-opacity="50%"
           />
@@ -82,156 +76,151 @@ const Atmosphere: FC<{ height: number; bodyRadius: number }> = ({
           />
         </radialGradient>
       </defs>
-      <S.Atmosphere height={height} parentRadius={bodyRadius} />
-    </>
+      <circle
+        r={scene.body.radius + scene.body.atmosphere!.height}
+        fill="url(#atmosphere-gradient)"
+      />
+    </Show>
   );
 };
 
-const Satellite: FC<{ index: number; vMin: number }> = ({ index, vMin }) => {
+const NightShadow: Component = () => {
   const scene = useScene();
-  if (index >= scene.satellites.count) return null;
 
-  const [x, y] = getSatellitePosition(scene, index);
-
-  return <S.Satellite r={0.003 * vMin} cx={x} cy={y} />;
+  return (
+    <Show when={scene.ui.toggles.night}>
+      <rect
+        x={0}
+        y={-scene.body.radius}
+        width="100%"
+        height={scene.body.radius * 2}
+        class={styles.shadow}
+      />
+    </Show>
+  );
 };
 
-const SatelliteRange: FC<{ index: number; vMin: number }> = ({
-  index,
-  vMin,
-}) => {
+const SatellitesOrbit: Component = () => {
   const scene = useScene();
-  if (index >= scene.satellites.count) return null;
-  const [x, y] = getSatellitePosition(scene, index);
+  const { vMin } = usePlot();
 
-  const shadowId = `omni-shadow-${index}`;
+  return (
+    <Show when={scene.satellites.count > 0 && scene.ui.toggles.orbit}>
+      <circle
+        r={scene.satellites.altitude + scene.body.radius}
+        stroke-width={0.0005 * vMin()}
+        stroke-dasharray={(0.01 * vMin()).toString()}
+        class={styles.orbit}
+      />
+    </Show>
+  );
+};
+
+const Satellite: Component<{ index: number }> = (props) => {
+  const scene = useScene();
+  const { vMin } = usePlot();
+
+  const position = createMemo(() =>
+    getSatellitePosition(
+      scene.body.radius + scene.satellites.altitude,
+      scene.satellites.count,
+      props.index
+    )
+  );
+
+  return (
+    <circle
+      class={styles.satellite}
+      r={0.003 * vMin()}
+      cx={position()[0]}
+      cy={position()[1]}
+    />
+  );
+};
+
+const getSatellitePosition = (
+  radius: number,
+  count: number,
+  index: number
+): Vec => [
+  radius * Math.sin(Math.PI + 2 * Math.PI * (index / count)),
+  radius * Math.cos(Math.PI + 2 * Math.PI * (index / count)),
+];
+
+const SatelliteRange: Component<{ index: number }> = (props) => {
+  const scene = useScene();
+  const { vMin } = usePlot();
+
+  const position = createMemo(() =>
+    getSatellitePosition(
+      scene.body.radius + scene.satellites.altitude,
+      scene.satellites.count,
+      props.index
+    )
+  );
+
+  const shadowVertices = () => {
+    const r = scene.body.radius;
+    const a = r + scene.satellites.altitude;
+
+    const theta = Math.acos(r / a);
+
+    const tanA = vec.rotate(vec.scale(position(), r), theta);
+    const tanB = vec.rotate(vec.scale(position(), r), -theta);
+
+    const tanAInf = vec.scale(vec.subtract(tanA, position()), vMin() * 2);
+    const tanBInf = vec.scale(vec.subtract(tanB, position()), vMin() * 2);
+
+    return [tanA, tanB, tanBInf, tanAInf];
+  };
+
+  const shadowId = () => `omni-shadow-${props.index}`;
 
   return (
     <>
-      <defs>
-        <mask id={shadowId}>
-          <rect x="-50%" y="-50%" width="100%" height="100%" fill="#fff" />
-          <OmniShadow index={index} vMin={vMin} />
-        </mask>
-      </defs>
-      <S.OmniRange
+      <mask id={shadowId()}>
+        <rect x="-50%" y="-50%" width="100%" height="100%" fill="#fff" />
+        <polygon
+          points={shadowVertices()
+            .map((point) => point.join(","))
+            .join(" ")}
+        />
+      </mask>
+      <circle
+        class={styles.omniRange}
         r={scene.satellites.omniRange}
-        cx={x}
-        cy={y}
-        mask={`url(#${shadowId})`}
+        cx={position()[0]}
+        cy={position()[1]}
+        mask={`url(#${shadowId()})`}
       />
     </>
   );
 };
 
-const OmniShadow: FC<{ index: number; vMin: number }> = ({ index, vMin }) => {
+const StableOrbit: Component = () => {
   const scene = useScene();
-  const satPos = getSatellitePosition(scene, index);
+  const { vMin } = usePlot();
 
-  const r = scene.body.radius;
-  const a = r + scene.satellites.altitude;
+  const stableAltitude = createMemo(() => {
+    const a = scene.body.radius + scene.satellites.altitude;
+    const b = scene.satellites.omniRange;
 
-  const theta = Math.acos(r / a);
+    const B = Math.PI / scene.satellites.count;
 
-  const tanA = vec.rotate(vec.scale(satPos, r), theta);
-  const tanB = vec.rotate(vec.scale(satPos, r), -theta);
+    const A = Math.asin((a * Math.sin(B)) / b);
+    const C = Math.PI - A - B;
 
-  const tanAInf = vec.scale(vec.subtract(tanA, satPos), vMin * 2);
-  const tanBInf = vec.scale(vec.subtract(tanB, satPos), vMin * 2);
-
-  const points = [tanA, tanB, tanBInf, tanAInf];
-
-  return <polygon points={points.map((point) => point.join(",")).join(" ")} />;
-};
-
-const getSatellitePosition = (
-  { body, satellites }: T.Scene,
-  index: number
-): Vec => {
-  const offset = body.radius + satellites.altitude;
-  return [
-    offset * Math.sin(Math.PI + 2 * Math.PI * (index / satellites.count)),
-    offset * Math.cos(Math.PI + 2 * Math.PI * (index / satellites.count)),
-  ];
-};
-
-const StableOrbit: FC<{ vMin: number }> = ({ vMin }) => {
-  const scene = useScene();
-  if (!scene.ui.toggles.stable) return null;
-
-  const a = scene.body.radius + scene.satellites.altitude;
-  const b = scene.satellites.omniRange;
-
-  const B = Math.PI / scene.satellites.count;
-
-  const A = Math.asin((a * Math.sin(B)) / b);
-  const C = Math.PI - A - B;
-
-  const c = Math.sqrt(a ** 2 + b ** 2 - 2 * a * b * Math.cos(C));
-
-  console.log(c);
-
-  if (isNaN(c)) return null;
+    return Math.sqrt(a ** 2 + b ** 2 - 2 * a * b * Math.cos(C));
+  });
 
   return (
-    <S.Orbit
-      r={c}
-      stroke-width={0.0005 * vMin}
-      stroke-dasharray={0.01 * vMin}
-    />
+    <Show when={scene.ui.toggles.stable}>
+      <circle
+        class={styles.orbit}
+        r={stableAltitude()}
+        stroke-width={0.0005 * vMin()}
+        stroke-dasharray={(0.01 * vMin()).toString()}
+      />
+    </Show>
   );
-};
-
-const S = {
-  Container: styled.svg`
-    width: 800px;
-    height: 800px;
-    border: 1px solid var(--cl-text);
-    display: block;
-
-    --cl-omni: #fdd835;
-    --cl-atmosphere: #8e9da9;
-
-    @media (prefers-color-scheme: dark) {
-      --cl-omni: #fff59d;
-      --cl-atmosphere: #01579b;
-    }
-  `,
-
-  Body: styled.circle.attrs<{ radius: number }>(({ radius }) => ({
-    cx: 0,
-    cy: 0,
-    r: radius,
-  }))`
-    fill: var(--cl-text);
-  `,
-
-  Atmosphere: styled.circle.attrs<{ height: number; parentRadius: number }>(
-    ({ parentRadius, height }) => ({
-      cx: 0,
-      cy: 0,
-      r: parentRadius + height,
-    })
-  )`
-    fill: url(#atmosphere-gradient);
-  `,
-
-  Satellite: styled.circle`
-    fill: var(--cl-text);
-  `,
-
-  OmniRange: styled.circle`
-    fill: var(--cl-omni);
-    opacity: 0.15;
-  `,
-
-  Orbit: styled.circle`
-    fill: none;
-    stroke: var(--cl-text);
-  `,
-
-  Shadow: styled.rect`
-    fill: var(--cl-text);
-    opacity: 0.1;
-  `,
 };
