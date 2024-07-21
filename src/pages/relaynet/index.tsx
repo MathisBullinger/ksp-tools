@@ -3,7 +3,9 @@ import { Plot } from "./plot";
 import { Parameters } from "./parameters";
 import { useCallback, useMemo, useState } from "preact/hooks";
 import { Scene, State, Update, makeDefaultScene } from "./state";
-import { Select, setPath } from "../../util";
+import { setPath } from "../../util";
+// @ts-ignore
+import Helmet from "preact-helmet";
 
 const RelayNet = () => {
   const [scene, setScene] = useState(makeDefaultScene);
@@ -24,6 +26,7 @@ const RelayNet = () => {
 
   return (
     <State.Provider value={contextValue}>
+      <Helmet title="Satellite planner (Kerbal Space Program)" />
       <S.Page>
         <Parameters />
         <Plot />
