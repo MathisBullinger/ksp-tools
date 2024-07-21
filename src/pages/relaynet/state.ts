@@ -36,15 +36,15 @@ export const makeDefaultScene = (): Scene => ({
     },
   },
   satellites: {
-    count: 4,
-    altitude: 1000,
-    omniRange: 2000,
+    count: 1,
+    altitude: 500,
+    omniRange: 3000,
   },
   ui: {
     toggles: {
       atmosphere: true,
       orbit: true,
-      stable: true,
+      stable: false,
       night: false,
     },
   },

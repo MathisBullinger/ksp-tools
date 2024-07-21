@@ -2,6 +2,7 @@ import styled from "styled-components";
 import { useScene } from "./state";
 import type * as T from "./state";
 import { FC } from "preact/compat";
+import { Vec, vec } from "../../util";
 
 export const Plot = () => {
   const scene = useScene();
@@ -21,6 +22,9 @@ export const Plot = () => {
     <S.Container viewBox={[-vMin / 2, -vMin / 2, vMin, vMin].join(" ")}>
       <g>
         <NightShadow {...scene.body} />
+        {[...Array(scene.satellites.count)].map((_, i) => (
+          <SatelliteRange key={i} index={i} vMin={vMin} />
+        ))}
         {scene.satellites.count > 0 && (
           <S.Orbit
             r={scene.satellites.altitude + scene.body.radius}
@@ -28,9 +32,6 @@ export const Plot = () => {
             stroke-dasharray={0.01 * vMin}
           />
         )}
-        {[...Array(scene.satellites.count)].map((_, i) => (
-          <SatelliteRange key={i} index={i} />
-        ))}
         <StableOrbit vMin={vMin} />
         {[...Array(scene.satellites.count)].map((_, i) => (
           <Satellite key={i} index={i} vMin={vMin} />
@@ -90,24 +91,68 @@ const Satellite: FC<{ index: number; vMin: number }> = ({ index, vMin }) => {
   const scene = useScene();
   if (index >= scene.satellites.count) return null;
 
-  const { x, y } = getSatellitePosition(scene, index);
+  const [x, y] = getSatellitePosition(scene, index);
 
   return <S.Satellite r={0.003 * vMin} cx={x} cy={y} />;
 };
 
-const SatelliteRange: FC<{ index: number }> = ({ index }) => {
+const SatelliteRange: FC<{ index: number; vMin: number }> = ({
+  index,
+  vMin,
+}) => {
   const scene = useScene();
   if (index >= scene.satellites.count) return null;
-  const { x, y } = getSatellitePosition(scene, index);
-  return <S.OmniRange r={scene.satellites.omniRange} cx={x} cy={y} />;
+  const [x, y] = getSatellitePosition(scene, index);
+
+  const shadowId = `omni-shadow-${index}`;
+
+  return (
+    <>
+      <defs>
+        <mask id={shadowId}>
+          <rect x="-50%" y="-50%" width="100%" height="100%" fill="#fff" />
+          <OmniShadow index={index} vMin={vMin} />
+        </mask>
+      </defs>
+      <S.OmniRange
+        r={scene.satellites.omniRange}
+        cx={x}
+        cy={y}
+        mask={`url(#${shadowId})`}
+      />
+    </>
+  );
 };
 
-const getSatellitePosition = ({ body, satellites }: T.Scene, index: number) => {
+const OmniShadow: FC<{ index: number; vMin: number }> = ({ index, vMin }) => {
+  const scene = useScene();
+  const satPos = getSatellitePosition(scene, index);
+
+  const r = scene.body.radius;
+  const a = r + scene.satellites.altitude;
+
+  const theta = Math.acos(r / a);
+
+  const tanA = vec.rotate(vec.scale(satPos, r), theta);
+  const tanB = vec.rotate(vec.scale(satPos, r), -theta);
+
+  const tanAInf = vec.scale(vec.subtract(tanA, satPos), vMin * 2);
+  const tanBInf = vec.scale(vec.subtract(tanB, satPos), vMin * 2);
+
+  const points = [tanA, tanB, tanBInf, tanAInf];
+
+  return <polygon points={points.map((point) => point.join(",")).join(" ")} />;
+};
+
+const getSatellitePosition = (
+  { body, satellites }: T.Scene,
+  index: number
+): Vec => {
   const offset = body.radius + satellites.altitude;
-  return {
-    x: offset * Math.sin(Math.PI + 2 * Math.PI * (index / satellites.count)),
-    y: offset * Math.cos(Math.PI + 2 * Math.PI * (index / satellites.count)),
-  };
+  return [
+    offset * Math.sin(Math.PI + 2 * Math.PI * (index / satellites.count)),
+    offset * Math.cos(Math.PI + 2 * Math.PI * (index / satellites.count)),
+  ];
 };
 
 const StableOrbit: FC<{ vMin: number }> = ({ vMin }) => {
@@ -117,12 +162,14 @@ const StableOrbit: FC<{ vMin: number }> = ({ vMin }) => {
   const a = scene.body.radius + scene.satellites.altitude;
   const b = scene.satellites.omniRange;
 
-  const B = (2 * Math.PI) / scene.satellites.count / 2;
+  const B = Math.PI / scene.satellites.count;
 
   const A = Math.asin((a * Math.sin(B)) / b);
   const C = Math.PI - A - B;
 
   const c = Math.sqrt(a ** 2 + b ** 2 - 2 * a * b * Math.cos(C));
+
+  console.log(c);
 
   if (isNaN(c)) return null;
 

@@ -43,3 +43,6 @@ export type Select<T, K extends string[]> = K extends [
   : T;
 
 export const ident = <T>(value: T): T => value;
+
+export type { Vec } from "./vec";
+export * as vec from "./vec";
