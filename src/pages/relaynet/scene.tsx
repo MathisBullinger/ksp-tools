@@ -16,7 +16,7 @@ export const defaultScene = (): Scene => ({
   },
   satellites: {
     count: 3,
-    altitude: 1000,
+    altitude: 500,
     omniRange: 3000,
   },
   ui: {
@@ -25,6 +25,7 @@ export const defaultScene = (): Scene => ({
       orbit: true,
       stable: false,
       night: true,
+      lineOfSight: true,
     },
   },
 });
@@ -52,6 +53,7 @@ export type Scene = {
       orbit: boolean;
       stable: boolean;
       night: boolean;
+      lineOfSight: boolean;
     };
   };
 };

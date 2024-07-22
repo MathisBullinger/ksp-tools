@@ -34,6 +34,7 @@ export const Parameters: Component = () => {
         <Item scenePath={["ui", "toggles", "orbit"]}>orbit</Item>
         <Item scenePath={["ui", "toggles", "stable"]}>stable</Item>
         <Item scenePath={["ui", "toggles", "night"]}>night shadow</Item>
+        <Item scenePath={["ui", "toggles", "lineOfSight"]}>LOS</Item>
       </Section>
     </form>
   );

@@ -39,6 +39,16 @@ export const Plot: Component = () => {
         <SatellitesOrbit />
         <Body />
         <For each={Array(scene.satellites.count)}>
+          {(_, index) => (
+            <LineOfSight
+              satelliteIndices={[
+                index(),
+                (index() + 1) % scene.satellites.count,
+              ]}
+            />
+          )}
+        </For>
+        <For each={Array(scene.satellites.count)}>
           {(_, index) => <Satellite index={index()} />}
         </For>
         <StableOrbit />
@@ -135,6 +145,54 @@ const Satellite: Component<{ index: number }> = (props) => {
       cx={position()[0]}
       cy={position()[1]}
     />
+  );
+};
+
+const LineOfSight: Component<{ satelliteIndices: [number, number] }> = (
+  props
+) => {
+  const scene = useScene();
+  const { vMin } = usePlot();
+
+  const separation = createMemo(() => {
+    const r = scene.body.radius + scene.satellites.altitude;
+    const a = (2 * Math.PI) / scene.satellites.count;
+    const r2s = 2 * r ** 2;
+    return Math.sqrt(r2s - r2s * Math.cos(a));
+  });
+
+  const hasConnection = createMemo(() => {
+    const s = separation();
+    if (s > scene.satellites.omniRange) return false;
+    const a = scene.body.radius + scene.satellites.altitude;
+    if (Math.sqrt(a ** 2 - (s / 2) ** 2) < scene.body.radius) return false;
+    return true;
+  });
+
+  const position = createMemo(() => {
+    const getPos = (index: number) =>
+      getSatellitePosition(
+        scene.body.radius + scene.satellites.altitude,
+        scene.satellites.count,
+        index
+      );
+    return [
+      getPos(props.satelliteIndices[0]),
+      getPos(props.satelliteIndices[1]),
+    ];
+  });
+
+  return (
+    <Show when={scene.ui.toggles.lineOfSight && scene.satellites.count > 0}>
+      <line
+        x1={position()[0][0]}
+        y1={position()[0][1]}
+        x2={position()[1][0]}
+        y2={position()[1][1]}
+        stroke-width={0.0005 * vMin()}
+        stroke={`var(--cl-${hasConnection() ? "positive" : "negative"})`}
+      />
+    </Show>
   );
 };
 

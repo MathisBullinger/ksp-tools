@@ -25,6 +25,8 @@
 
   --cl-background: #fff;
   --cl-text: #000;
+  --cl-negative: #f44336;
+  --cl-positive: #4caf50;
 
   background-color: var(--cl-background);
   color: var(--cl-text);
